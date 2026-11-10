@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\App;
 use App\Models\User;
@@ -10,25 +9,22 @@ use App\Models\ApplicationTester;
 
 class ApplicationTesterSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $applications = App::all();
+        // Aplikasi khusus E2E sengaja dikosongkan supaya bisa diambil lewat Playwright
+        $applications = App::where('title', '!=', 'Aplikasi Uji E2E')->get();
 
-        $testers = User::where('role', 'tester')
-            ->where('email', 'like', 'tester%@gmail.com')
-            ->get();
+        // Tester tetap: tester1 sampai tester12 (tester@gmail.com TIDAK ikut)
+        $emails = collect(range(1, 12))->map(fn ($i) => "tester{$i}@gmail.com");
+
+        $testers = User::whereIn('email', $emails)->orderBy('id')->get();
 
         if ($testers->count() < 12) {
             return;
         }
 
         foreach ($applications as $application) {
-            $selectedTesters = $testers->random(12);
-
-            foreach ($selectedTesters as $tester) {
+            foreach ($testers as $tester) {
                 ApplicationTester::create([
                     'application_id' => $application->id,
                     'tester_id' => $tester->id,

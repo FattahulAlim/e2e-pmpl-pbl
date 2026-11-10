@@ -108,5 +108,20 @@ class AppSeeder extends Seeder
             'start_date' => Carbon::now(),
             'end_date' => Carbon::now()->addDays(14),
         ]);
+
+                // APLIKASI KHUSUS UNTUK E2E TESTING (bisa diambil oleh tester)
+        App::create([
+            'developer_id' => $developer->id,
+            'title' => 'Aplikasi Uji E2E',
+            'platform' => 'Android',
+            'app_link' => 'https://google.com',
+            'description' => 'Aplikasi ini disiapkan khusus supaya tester bisa mengambil misi saat pengujian otomatis.',
+            'payment_proof' => 'dummy_proof_4.jpg',
+            'payment_status' => 'valid',
+            'testing_status' => 'open',
+            'max_testers' => 15,
+            'start_date' => Carbon::now(),
+            'end_date' => Carbon::now()->addDays(14),
+        ]);
     }
 }

@@ -1,0 +1,94 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pbl_e2e
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # Laravel membaca variabel ini lebih dulu daripada isi .env
+      APP_ENV: testing
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: pbl_e2e
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      # Akun untuk test (dari seeder)
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL || 'tester1@gmail.com' }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || 'password123' }}
+
+    steps:
+      - name: Checkout Kode Sumber
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, gd, zip, bcmath
+          coverage: none
+
+      - name: Install dependency Laravel
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Siapkan .env Laravel
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build aset frontend Laravel (Vite)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Migrate dan seed database
+        run: php artisan migrate:fresh --seed --force
+
+      - name: Install dependency Playwright
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install browser Playwright
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Jalankan test E2E
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Upload report dan trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14
